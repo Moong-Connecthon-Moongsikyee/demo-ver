@@ -15,9 +15,6 @@ export default {
         'ag-green': '#304D29',
         'white': '#FFFEFD',
       },
- 
-
-
     },
   },
   plugins: [],
