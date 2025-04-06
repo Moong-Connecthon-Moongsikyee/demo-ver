@@ -8,9 +8,8 @@ const Sidebar = () => {
   const menuItems = [
     { name: '메인 대시보드', path: '/dashboard' },
     { name: '역량 진단 프로세스', path: '/party-process' },
-    { name: '로드맵 생성', path: '/roadmap-generation' },
-    { name: '로드맵 관리', path: '/roadmap-management' },
-    { name: '아바타 커스터마이징', path: '/avatar-customization' },
+    { name: '로드맵', path: '/roadmap-management' },
+    { name: '아바타', path: '/avatar-customization' },
   ];
   
   return (
