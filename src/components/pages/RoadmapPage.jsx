@@ -16,6 +16,7 @@ const RoadmapPage = () => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedRole, setSelectedRole] = useState('');
   const [skillLevels, setSkillLevels] = useState({});
+  const [showTip, setShowTip] = useState(true); // TIP 메시지 표시 여부 상태 추가
   
   // 로컬 스토리지에서 사용자 데이터 가져오기
   useEffect(() => {
@@ -238,13 +239,21 @@ const RoadmapPage = () => {
             </div>
           </div>
           
-          <div className="mb-6 bg-gray-900 text-white p-4 rounded-lg flex justify-between items-center">
-            <div className="flex items-center">
-              <span className="font-bold mr-2">TIP</span>
-              <span>노드를 우클릭하여 완료 표시를 할 수 있습니다.</span>
+          {showTip && (
+            <div className="mb-6 bg-gray-900 text-white p-4 rounded-lg flex justify-between items-center">
+              <div className="flex items-center">
+                <span className="font-bold mr-2">TIP</span>
+                <span>노드를 우클릭하여 완료 표시를 할 수 있습니다.</span>
+              </div>
+              <Button 
+                variant="secondary" 
+                className="text-sm"
+                onClick={() => setShowTip(false)}
+              >
+                닫기
+              </Button>
             </div>
-            <Button variant="secondary" className="text-sm">닫기</Button>
-          </div>
+          )}
           
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3">

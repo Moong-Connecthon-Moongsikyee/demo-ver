@@ -173,7 +173,7 @@ const InterviewPage = () => {
           2. JavaScript: ${dummyUserData.skillLevels.programming === '고급' ? '고급' : '중급'} 수준
           3. 프레임워크: ${dummyUserData.skillLevels.programming === '고급' ? '중급' : '초급'} 수준
           
-          학습 가능 시간(${dummyUserData.studyTime})을 고려하여 맞춤형 로드맵을 생성하시겠습니까?`,
+          맞춤형 로드맵을 생성하시겠습니까?`,
           ['로드맵 생성하기', '다시 면접 보기']
         );
         setCurrentStage('result');
