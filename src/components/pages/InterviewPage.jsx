@@ -7,11 +7,22 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 
 const InterviewPage = () => {
+  // PartyProcess에서 전달받았다고 가정하는 더미 데이터
+  const dummyUserData = {
+    skillLevels: {
+      programming: '중급',
+      dataAnalysis: '초급',
+      projectManagement: '일부 경험'
+    },
+    targetRole: '프론트엔드 개발자',
+    studyTime: '주 5-10시간'
+  };
+
   const [messages, setMessages] = useState([
     {
       id: 1,
       sender: 'bot',
-      content: '안녕하세요! 저는 커리어로 기술 면접 챗봇입니다. 프론트엔드 개발 역량을 평가하기 위한 몇 가지 질문을 드리겠습니다. 준비되셨나요?',
+      content: `안녕하세요! 저는 커리어로 기술 면접 챗봇입니다. ${dummyUserData.targetRole} 직무를 위한 기술 면접을 시작하겠습니다. 준비되셨나요?`,
       options: ['네, 시작할게요', '잠시만 기다려주세요']
     }
   ]);
@@ -19,83 +30,81 @@ const InterviewPage = () => {
   const [userInput, setUserInput] = useState('');
   const [currentStage, setCurrentStage] = useState('intro');
   const [isTyping, setIsTyping] = useState(false);
-  const [userSkills, setUserSkills] = useState({});
   
   const chatContainerRef = useRef(null);
   const navigate = useNavigate();
   
-  // 사전 조사 질문
-  const preInterviewQuestions = [
-    {
-      id: 'experience',
-      question: '개발 경험은 어느 정도인가요?',
-      options: ['입문자 (1년 미만)', '초급 (1-2년)', '중급 (3-5년)', '고급 (5년 이상)']
-    },
-    {
-      id: 'frontend_familiarity',
-      question: '프론트엔드 기술에 대한 친숙도는 어느 정도인가요?',
-      options: ['HTML/CSS 기초만 알고 있어요', 'JavaScript 기초를 알고 있어요', '프레임워크 사용 경험이 있어요', '고급 웹 개발 경험이 있어요']
-    },
-    {
-      id: 'learning_goal',
-      question: '어떤 목적으로 프론트엔드를 학습하고 계신가요?',
-      options: ['취업/이직 준비', '사이드 프로젝트 개발', '현업 역량 강화', '호기심/개인 발전']
-    }
-  ];
-  
-  // 기술 면접 질문 (사전 조사 기반으로 난이도 조정 가능)
+  // 기술 면접 질문 (역할에 따라 다른 질문 세트 제공)
   const technicalQuestions = {
-    basic: [
-      {
-        id: 'html_semantic',
-        question: 'HTML에서 시맨틱 태그란 무엇이며, 왜 중요한가요?',
-        expectedAnswer: '시맨틱 태그는 의미를 가진 HTML 요소로, 검색 엔진 최적화(SEO), 접근성, 코드 가독성 등을 향상시킵니다.'
-      },
-      {
-        id: 'css_box_model',
-        question: 'CSS Box Model에 대해 설명해주세요.',
-        expectedAnswer: 'CSS Box Model은 모든 HTML 요소를 상자로 간주하며, 콘텐츠, 패딩, 테두리, 마진으로 구성됩니다.'
-      },
-      {
-        id: 'js_datatype',
-        question: 'JavaScript의 기본 데이터 타입을 나열해주세요.',
-        expectedAnswer: 'String, Number, Boolean, Null, Undefined, Symbol, BigInt가 있습니다.'
-      }
-    ],
-    intermediate: [
-      {
-        id: 'js_closure',
-        question: 'JavaScript의 클로저(Closure)에 대해 설명해주세요.',
-        expectedAnswer: '클로저는 함수와 그 함수가 선언된 어휘적 환경의 조합입니다. 내부 함수가 외부 함수의 변수에 접근할 수 있게 합니다.'
-      },
-      {
-        id: 'css_flexbox',
-        question: 'Flexbox와 Grid의 차이점은 무엇인가요?',
-        expectedAnswer: 'Flexbox는 1차원 레이아웃에 최적화되어 있고, Grid는 2차원 레이아웃에 적합합니다.'
-      },
-      {
-        id: 'react_lifecycle',
-        question: 'React 컴포넌트의 생명주기에 대해 설명해주세요.',
-        expectedAnswer: 'React 컴포넌트는 마운트, 업데이트, 언마운트 단계로 나뉘며, 각 단계에서 다양한 메서드가 호출됩니다. 함수형 컴포넌트에서는 useEffect 등의 Hook으로 이를 대체합니다.'
-      }
-    ],
-    advanced: [
-      {
-        id: 'js_event_loop',
-        question: 'JavaScript의 이벤트 루프에 대해 설명해주세요.',
-        expectedAnswer: '이벤트 루프는 비동기 작업을 처리하는 JavaScript 런타임의 메커니즘으로, 콜 스택, 태스크 큐, 마이크로태스크 큐 등으로 구성됩니다.'
-      },
-      {
-        id: 'react_performance',
-        question: 'React 애플리케이션의 성능을 최적화하는 방법에는 어떤 것들이 있나요?',
-        expectedAnswer: 'React.memo, useMemo, useCallback을 사용한 메모이제이션, 가상화(virtualization), 코드 스플리팅, 레이지 로딩, 상태 관리 최적화 등이 있습니다.'
-      },
-      {
-        id: 'browser_rendering',
-        question: '브라우저 렌더링 과정에 대해 설명해주세요.',
-        expectedAnswer: 'HTML 파싱, DOM 트리 생성, CSSOM 트리 생성, 렌더 트리 구성, 레이아웃(리플로우), 페인팅, 컴포지팅 과정을 거칩니다.'
-      }
-    ]
+    '프론트엔드 개발자': {
+      basic: [
+        {
+          id: 'html_semantic',
+          question: 'HTML에서 시맨틱 태그란 무엇이며, 왜 중요한가요?',
+          expectedAnswer: '시맨틱 태그는 의미를 가진 HTML 요소로, 검색 엔진 최적화(SEO), 접근성, 코드 가독성 등을 향상시킵니다.'
+        },
+        {
+          id: 'css_box_model',
+          question: 'CSS Box Model에 대해 설명해주세요.',
+          expectedAnswer: 'CSS Box Model은 모든 HTML 요소를 상자로 간주하며, 콘텐츠, 패딩, 테두리, 마진으로 구성됩니다.'
+        },
+        {
+          id: 'js_datatype',
+          question: 'JavaScript의 기본 데이터 타입을 나열해주세요.',
+          expectedAnswer: 'String, Number, Boolean, Null, Undefined, Symbol, BigInt가 있습니다.'
+        }
+      ],
+      intermediate: [
+        {
+          id: 'js_closure',
+          question: 'JavaScript의 클로저(Closure)에 대해 설명해주세요.',
+          expectedAnswer: '클로저는 함수와 그 함수가 선언된 어휘적 환경의 조합입니다. 내부 함수가 외부 함수의 변수에 접근할 수 있게 합니다.'
+        },
+        {
+          id: 'css_flexbox',
+          question: 'Flexbox와 Grid의 차이점은 무엇인가요?',
+          expectedAnswer: 'Flexbox는 1차원 레이아웃에 최적화되어 있고, Grid는 2차원 레이아웃에 적합합니다.'
+        },
+        {
+          id: 'react_lifecycle',
+          question: 'React 컴포넌트의 생명주기에 대해 설명해주세요.',
+          expectedAnswer: 'React 컴포넌트는 마운트, 업데이트, 언마운트 단계로 나뉘며, 각 단계에서 다양한 메서드가 호출됩니다. 함수형 컴포넌트에서는 useEffect 등의 Hook으로 이를 대체합니다.'
+        }
+      ],
+      advanced: [
+        {
+          id: 'js_event_loop',
+          question: 'JavaScript의 이벤트 루프에 대해 설명해주세요.',
+          expectedAnswer: '이벤트 루프는 비동기 작업을 처리하는 JavaScript 런타임의 메커니즘으로, 콜 스택, 태스크 큐, 마이크로태스크 큐 등으로 구성됩니다.'
+        },
+        {
+          id: 'react_performance',
+          question: 'React 애플리케이션의 성능을 최적화하는 방법에는 어떤 것들이 있나요?',
+          expectedAnswer: 'React.memo, useMemo, useCallback을 사용한 메모이제이션, 가상화(virtualization), 코드 스플리팅, 레이지 로딩, 상태 관리 최적화 등이 있습니다.'
+        },
+        {
+          id: 'browser_rendering',
+          question: '브라우저 렌더링 과정에 대해 설명해주세요.',
+          expectedAnswer: 'HTML 파싱, DOM 트리 생성, CSSOM 트리 생성, 렌더 트리 구성, 레이아웃(리플로우), 페인팅, 컴포지팅 과정을 거칩니다.'
+        }
+      ]
+    },
+    '백엔드 개발자': {
+      basic: [
+        {
+          id: 'api_rest',
+          question: 'REST API의 주요 원칙에 대해 설명해주세요.',
+          expectedAnswer: 'REST는 Representational State Transfer의 약자로, 자원(URI), 행위(HTTP 메서드), 표현(JSON, XML 등)의 세 가지 요소를 활용합니다. Stateless, Client-Server 구조, Cacheable, Uniform Interface 등의 원칙이 있습니다.'
+        },
+        {
+          id: 'db_basic',
+          question: 'SQL과 NoSQL 데이터베이스의 주요 차이점은 무엇인가요?',
+          expectedAnswer: 'SQL은 정형화된 테이블 스키마와 관계형 구조를 가지며, NoSQL은 보다 유연한 스키마와 다양한 데이터 모델(문서, 키-값, 그래프 등)을 제공합니다.'
+        }
+      ],
+      // 다른 백엔드 질문들...
+    },
+    // 다른 직무별 질문 세트...
   };
   
   // 메시지 추가 함수
@@ -129,16 +138,24 @@ const InterviewPage = () => {
     if (currentStage === 'intro') {
       if (option === '네, 시작할게요') {
         simulateBotResponse(
-          '좋습니다! 먼저 몇 가지 기본적인 정보를 파악하기 위한 질문을 드리겠습니다.',
-          null
+          `${dummyUserData.targetRole} 직무를 위한 기술 면접을 시작하겠습니다. 사전 조사 결과, 귀하의 프로그래밍 수준은 ${dummyUserData.skillLevels.programming}으로 파악되었습니다. 이에 맞춰 질문을 진행하겠습니다.`
         );
         
+        // 난이도 결정 (더미 데이터 기반)
+        let difficultyLevel = 'basic';
+        if (dummyUserData.skillLevels.programming === '중급') {
+          difficultyLevel = 'intermediate';
+        } else if (dummyUserData.skillLevels.programming === '고급') {
+          difficultyLevel = 'advanced';
+        }
+        
+        // 첫 번째 기술 면접 질문
         setTimeout(() => {
+          const roleQuestions = technicalQuestions[dummyUserData.targetRole] || technicalQuestions['프론트엔드 개발자'];
           simulateBotResponse(
-            preInterviewQuestions[0].question,
-            preInterviewQuestions[0].options
+            roleQuestions[difficultyLevel][0].question
           );
-          setCurrentStage('pre_interview_1');
+          setCurrentStage('tech_interview_1');
         }, 2000);
       } else {
         simulateBotResponse(
@@ -146,71 +163,17 @@ const InterviewPage = () => {
         );
       }
     } 
-    else if (currentStage === 'pre_interview_1') {
-      // 첫 번째 사전 질문 응답 저장
-      setUserSkills(prev => ({
-        ...prev,
-        experience: option
-      }));
-      
-      simulateBotResponse(
-        preInterviewQuestions[1].question,
-        preInterviewQuestions[1].options
-      );
-      setCurrentStage('pre_interview_2');
-    }
-    else if (currentStage === 'pre_interview_2') {
-      // 두 번째 사전 질문 응답 저장
-      setUserSkills(prev => ({
-        ...prev,
-        frontend_familiarity: option
-      }));
-      
-      simulateBotResponse(
-        preInterviewQuestions[2].question,
-        preInterviewQuestions[2].options
-      );
-      setCurrentStage('pre_interview_3');
-    }
-    else if (currentStage === 'pre_interview_3') {
-      // 세 번째 사전 질문 응답 저장
-      setUserSkills(prev => ({
-        ...prev,
-        learning_goal: option
-      }));
-      
-      // 사전 조사 결과 요약
-      simulateBotResponse(
-        `사전 조사에 응해주셔서 감사합니다. 기술 면접을 시작하겠습니다. 답변은 자유롭게 텍스트로 입력해주세요.`
-      );
-      
-      // 난이도 결정 (여기서는 간단히 frontend_familiarity 기준으로)
-      let difficultyLevel = 'basic';
-      if (userSkills.frontend_familiarity === '프레임워크 사용 경험이 있어요') {
-        difficultyLevel = 'intermediate';
-      } else if (userSkills.frontend_familiarity === '고급 웹 개발 경험이 있어요') {
-        difficultyLevel = 'advanced';
-      }
-      
-      // 첫 번째 기술 면접 질문
-      setTimeout(() => {
-        simulateBotResponse(
-          technicalQuestions[difficultyLevel][0].question
-        );
-        setCurrentStage('tech_interview_1');
-      }, 2000);
-    }
     else if (currentStage.startsWith('tech_interview')) {
       // 면접 종료 및 결과 안내
       if (currentStage === 'tech_interview_2') {
         simulateBotResponse(
-          `면접이 완료되었습니다! 지금까지의 응답을 분석한 결과, 귀하의 프론트엔드 역량은 다음과 같습니다:
+          `면접이 완료되었습니다! 지금까지의 응답을 분석한 결과, 귀하의 ${dummyUserData.targetRole} 역량은 다음과 같습니다:
           
-          1. HTML/CSS: ${userSkills.frontend_familiarity.includes('기초') ? '초급' : '중급'} 수준
-          2. JavaScript: ${userSkills.frontend_familiarity.includes('프레임워크') ? '중급' : '초급'} 수준
-          3. 프레임워크: ${userSkills.frontend_familiarity.includes('고급') ? '중급' : '초급'} 수준
+          1. HTML/CSS: ${dummyUserData.skillLevels.programming === '초급' ? '초급' : '중급'} 수준
+          2. JavaScript: ${dummyUserData.skillLevels.programming === '고급' ? '고급' : '중급'} 수준
+          3. 프레임워크: ${dummyUserData.skillLevels.programming === '고급' ? '중급' : '초급'} 수준
           
-          이를 기반으로 맞춤형 로드맵을 생성하시겠습니까?`,
+          학습 가능 시간(${dummyUserData.studyTime})을 고려하여 맞춤형 로드맵을 생성하시겠습니까?`,
           ['로드맵 생성하기', '다시 면접 보기']
         );
         setCurrentStage('result');
@@ -224,17 +187,18 @@ const InterviewPage = () => {
       
       // 난이도에 따른 다음 질문
       let difficultyLevel = 'basic';
-      if (userSkills.frontend_familiarity === '프레임워크 사용 경험이 있어요') {
+      if (dummyUserData.skillLevels.programming === '중급') {
         difficultyLevel = 'intermediate';
-      } else if (userSkills.frontend_familiarity === '고급 웹 개발 경험이 있어요') {
+      } else if (dummyUserData.skillLevels.programming === '고급') {
         difficultyLevel = 'advanced';
       }
       
+      const roleQuestions = technicalQuestions[dummyUserData.targetRole] || technicalQuestions['프론트엔드 개발자'];
       const nextQuestion = currentStage === 'tech_interview_1' ? 1 : 2;
       
       setTimeout(() => {
         simulateBotResponse(
-          technicalQuestions[difficultyLevel][nextQuestion].question
+          roleQuestions[difficultyLevel][nextQuestion].question
         );
         setCurrentStage(`tech_interview_${nextQuestion + 1}`);
       }, 2000);
@@ -248,12 +212,11 @@ const InterviewPage = () => {
           {
             id: 1,
             sender: 'bot',
-            content: '안녕하세요! 저는 커리어로 기술 면접 챗봇입니다. 프론트엔드 개발 역량을 평가하기 위한 몇 가지 질문을 드리겠습니다. 준비되셨나요?',
+            content: `안녕하세요! 저는 커리어로 기술 면접 챗봇입니다. ${dummyUserData.targetRole} 직무를 위한 기술 면접을 시작하겠습니다. 준비되셨나요?`,
             options: ['네, 시작할게요', '잠시만 기다려주세요']
           }
         ]);
         setCurrentStage('intro');
-        setUserSkills({});
       }
     }
   };
@@ -271,18 +234,7 @@ const InterviewPage = () => {
     
     // "시작" 입력 처리
     if (userInput.toLowerCase() === '시작' && messages[messages.length - 1].sender === 'bot' && currentStage === 'intro') {
-      simulateBotResponse(
-        '좋습니다! 먼저 몇 가지 기본적인 정보를 파악하기 위한 질문을 드리겠습니다.',
-        null
-      );
-      
-      setTimeout(() => {
-        simulateBotResponse(
-          preInterviewQuestions[0].question,
-          preInterviewQuestions[0].options
-        );
-        setCurrentStage('pre_interview_1');
-      }, 2000);
+      handleOptionSelect('네, 시작할게요');
     } 
     // 기술 면접 단계 응답 처리
     else if (currentStage.startsWith('tech_interview')) {
@@ -306,12 +258,17 @@ const InterviewPage = () => {
       <div className="flex-1">
         <Header />
         <main className="max-w-4xl mx-auto px-4 py-8">
-          <h2 className="text-2xl font-bold mb-6">역량 진단 - 기술 면접</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">역량 진단 - 기술 면접</h2>
+            <div className="text-sm bg-gray-100 p-2 rounded-md">
+              <span className="font-medium">진단 중인 직무:</span> {dummyUserData.targetRole}
+            </div>
+          </div>
           
           <Card className="p-0 overflow-hidden flex flex-col" style={{ height: 'calc(80vh - 100px)' }}>
             <div className="bg-violet-700 text-white px-4 py-3">
               <h3 className="text-lg font-bold">기술 면접 챗봇</h3>
-              <p className="text-sm opacity-80">프론트엔드 개발 역량 진단</p>
+              <p className="text-sm opacity-80">{dummyUserData.targetRole} 역량 진단</p>
             </div>
             
             <div 
