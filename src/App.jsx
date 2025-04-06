@@ -7,7 +7,7 @@ import RoleSelection from './components/pages/RoleSelection';
 import PartyProcess from './components/pages/PartyProcess';
 import RoadmapGeneration from './components/pages/RoadmapGeneration';
 import Dashboard from './components/pages/Dashboard';
-import RoadmapManagement from './components/pages/RoadmapManagement';
+import RoadmapManagement from './components/pages/RoadmapPage';
 import AvatarCustomization from './components/pages/AvatarCustomization';
 
 const App = () => {
