@@ -13,7 +13,7 @@ export default {
 
       colors: {
         'ag-green': '#304D29',
-        'while': '#FFFEFD',
+        'white': '#FFFEFD',
       },
  
 

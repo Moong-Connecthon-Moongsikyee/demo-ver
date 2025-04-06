@@ -8,11 +8,10 @@ const Landing = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <main className=" mx-auto px-4 py-12">
-        <div className="pl-[88px] pt-[210px]">
+      <main className="flex-column pt-[100px]">
+        <div className="pl-[44px] ">
 
-          <div className= "display: inline text-[9.25rem] font-RiaSans text-ag-green">커리어로</div>
-          
+          <div className= "display: inline text-[7rem] font-RiaSans text-ag-green">커리어로</div>
           <p className="text-xl text-gray-600 mb-8">성장을 위한 진로탐색, 커리어로와 함께하세요.</p>
           <Link to="/login">
             <Button className="px-8 py-3 text-lg ">역량 진단 바로가기 버튼</Button>
