@@ -45,8 +45,8 @@ const PartyProcess = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // 모든 단계 완료
-      navigate('/roadmap-generation');
+      // 모든 단계 완료 후 인터뷰 페이지로 이동
+      navigate('/interview');
     }
   };
   
@@ -138,7 +138,7 @@ const PartyProcess = () => {
                 이전
               </Button>
               <Button onClick={handleNext}>
-                {currentStep === steps.length - 1 ? '완료' : '다음'}
+                {currentStep === steps.length - 1 ? '기술 면접 시작하기' : '다음'}
               </Button>
             </div>
           </Card>
