@@ -205,7 +205,7 @@ const InterviewPage = () => {
     }
     else if (currentStage === 'result') {
       if (option === '로드맵 생성하기') {
-        navigate('/roadmap-generation');
+        handleInterviewComplete();
       } else {
         // 다시 면접 보기
         setMessages([
@@ -251,6 +251,21 @@ const InterviewPage = () => {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  const handleInterviewComplete = () => {
+    // 면접 결과를 로컬 스토리지에 저장
+    const interviewResults = {
+      // ... 면접 결과 데이터
+    };
+    
+    // 기존 사용자 데이터와 면접 결과를 합쳐서 저장
+    const userData = JSON.parse(localStorage.getItem('userAssessmentData') || '{}');
+    userData.interviewResults = interviewResults;
+    localStorage.setItem('userAssessmentData', JSON.stringify(userData));
+    
+    // 로드맵 페이지로 이동
+    navigate('/roadmap');
+  };
   
   return (
     <div className="min-h-screen bg-gray-50 flex">

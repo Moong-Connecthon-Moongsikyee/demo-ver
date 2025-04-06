@@ -1,13 +1,57 @@
 // src/components/pages/RoadmapPage.jsx
-import React, { useState } from 'react';
-import Header from '../layout/Header';
-import Sidebar from '../layout/Sidebar';
-import Card from '../common/Card';
-import Button from '../common/Button';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Header from '../../components/layout/Header';
+import Sidebar from '../../components/layout/Sidebar';
+import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
+
+// 데이터 가져오기
+import { roadmapNodes, roadmapCategories, roadmapDescriptions, learningResources } from '../../data/frontendRoadmapData';
 
 const RoadmapPage = () => {
+  const { role } = useParams(); // URL 파라미터에서 선택한 역할 가져오기
+  const navigate = useNavigate();
   const [completedNodes, setCompletedNodes] = useState({});
   const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [skillLevels, setSkillLevels] = useState({});
+  
+  // 로컬 스토리지에서 사용자 데이터 가져오기
+  useEffect(() => {
+    const userData = localStorage.getItem('userAssessmentData');
+    
+    if (userData) {
+      const parsedData = JSON.parse(userData);
+      setSelectedRole(parsedData.targetRole || '');
+      setSkillLevels(parsedData.skillLevels || {});
+    } else if (role) {
+      // URL에서 역할이 지정된 경우
+      setSelectedRole(decodeURIComponent(role));
+    } else {
+      // 기본값으로 프론트엔드 개발자 설정
+      setSelectedRole('프론트엔드 개발자');
+    }
+  }, [role]);
+  
+  // 로컬 스토리지에서 완료된 노드 상태 가져오기
+  useEffect(() => {
+    const savedCompletedNodes = localStorage.getItem('completedRoadmapNodes');
+    if (savedCompletedNodes) {
+      try {
+        setCompletedNodes(JSON.parse(savedCompletedNodes));
+      } catch (error) {
+        console.error('Failed to parse completed nodes from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // 완료된 노드 상태 저장하기
+  useEffect(() => {
+    if (Object.keys(completedNodes).length > 0) {
+      localStorage.setItem('completedRoadmapNodes', JSON.stringify(completedNodes));
+    }
+  }, [completedNodes]);
   
   // 노드 완료 토글 함수
   const handleNodeToggle = (nodeId) => {
@@ -22,32 +66,151 @@ const RoadmapPage = () => {
     setSelectedNode(node);
   };
   
-  // 노드 정보 (예시)
-  const nodeDetails = {
-    'html-basics': {
-      title: 'HTML 기초',
-      description: 'HTML의 기본 구조와 시맨틱 태그에 대해 학습합니다.',
-      resources: [
-        { title: 'MDN - HTML 소개', url: 'https://developer.mozilla.org/ko/docs/Learn/HTML/Introduction_to_HTML' },
-        { title: 'W3Schools HTML 튜토리얼', url: 'https://www.w3schools.com/html/' }
-      ]
-    },
-    'css-basics': {
-      title: 'CSS 기초',
-      description: 'CSS 선택자, 박스 모델, 레이아웃 등 기본 개념을 학습합니다.',
-      resources: [
-        { title: 'MDN - CSS 첫걸음', url: 'https://developer.mozilla.org/ko/docs/Learn/CSS/First_steps' },
-        { title: 'CSS-Tricks 가이드', url: 'https://css-tricks.com/guides/' }
-      ]
-    },
-    'js-basics': {
-      title: 'JavaScript 기초',
-      description: '변수, 함수, 조건문, 반복문 등 JavaScript 기본 문법을 학습합니다.',
-      resources: [
-        { title: '모던 JavaScript 튜토리얼', url: 'https://ko.javascript.info/' },
-        { title: 'MDN - JavaScript 첫걸음', url: 'https://developer.mozilla.org/ko/docs/Learn/JavaScript/First_steps' }
-      ]
-    }
+  // 직무 변경 핸들러
+  const handleRoleChange = (newRole) => {
+    setSelectedRole(newRole);
+    setSelectedNode(null);
+    navigate(`/roadmap/${encodeURIComponent(newRole)}`);
+  };
+  
+  // 현재 선택된 직무에 대한 노드 목록 가져오기
+  const getCurrentRoleNodes = () => {
+    return roadmapNodes[selectedRole] || roadmapNodes['프론트엔드 개발자'];
+  };
+  
+  // 현재 선택된 직무에 대한 카테고리 목록 가져오기
+  const getCurrentRoleCategories = () => {
+    return roadmapCategories[selectedRole] || roadmapCategories['프론트엔드 개발자'];
+  };
+  
+  // 카테고리별 진행 상황 계산
+  const calculateCategoryProgress = (category) => {
+    // 모든 노드 ID를 재귀적으로 수집하는 함수
+    const getAllNodeIds = (cat) => {
+      if (!cat || !cat.nodes) return [];
+      
+      return cat.nodes.flatMap(node => {
+        // 문자열인 경우 (노드 ID)
+        if (typeof node === 'string') {
+          return [node];
+        }
+        // 객체인 경우 (중첩된 카테고리)
+        if (node.nodes) {
+          return getAllNodeIds(node);
+        }
+        return [];
+      });
+    };
+
+    const nodeIds = getAllNodeIds(category);
+    const totalNodes = nodeIds.length;
+    if (totalNodes === 0) return 0;
+    
+    const completedNodesCount = nodeIds.filter(nodeId => completedNodes[nodeId]).length;
+    return (completedNodesCount / totalNodes) * 100;
+  };
+  
+  // 전체 진행 상황 계산
+  const calculateTotalProgress = () => {
+    // 모든 노드 ID를 재귀적으로 수집하는 함수
+    const getAllNodeIds = (categories) => {
+      return categories.flatMap(category => {
+        if (!category || !category.nodes) return [];
+        
+        return category.nodes.flatMap(node => {
+          // 문자열인 경우 (노드 ID)
+          if (typeof node === 'string') {
+            return [node];
+          }
+          // 객체인 경우 (중첩된 카테고리)
+          if (node.nodes) {
+            return getAllNodeIds([node]);
+          }
+          return [];
+        });
+      });
+    };
+
+    const categories = getCurrentRoleCategories();
+    const allNodeIds = getAllNodeIds(categories);
+    const totalNodes = allNodeIds.length;
+    if (totalNodes === 0) return 0;
+    
+    const completedNodesCount = allNodeIds.filter(nodeId => completedNodes[nodeId]).length;
+    return (completedNodesCount / totalNodes) * 100;
+  };
+  
+  // 카테고리 렌더링 함수
+  const renderCategory = (category, level = 0) => {
+    // 노드 렌더링 함수
+    const renderNode = (nodeId) => {
+      const node = getCurrentRoleNodes()[nodeId];
+      if (!node) return null;
+      
+      return (
+        <div 
+          key={nodeId}
+          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
+          onClick={() => handleNodeSelect(node)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            handleNodeToggle(nodeId);
+          }}
+        >
+          {completedNodes[nodeId] && (
+            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
+              ✓
+            </div>
+          )}
+          <span>{node.title}</span>
+        </div>
+      );
+    };
+
+    // 중첩된 카테고리 렌더링 함수
+    const renderSubCategory = (subCategory, subLevel = 0) => {
+      return (
+        <div key={subCategory.name} className="ml-8">
+          <div className="flex items-center mb-3">
+            <div className="w-auto min-w-[100px] h-10 bg-yellow-300 rounded-md flex items-center justify-center font-bold px-3">
+              {subCategory.name}
+            </div>
+            <div className="ml-3 h-0.5 w-20 bg-blue-500"></div>
+          </div>
+          <div className="ml-16 space-y-3">
+            {subCategory.nodes.map(node => {
+              if (typeof node === 'string') {
+                return renderNode(node);
+              } else if (node.nodes) {
+                return renderSubCategory(node, subLevel + 1);
+              }
+              return null;
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="mb-10">
+        <div className="flex items-center mb-3">
+          <div className="w-auto min-w-[100px] h-10 bg-yellow-300 rounded-md flex items-center justify-center font-bold px-3">
+            {category.name}
+          </div>
+          <div className="ml-3 h-0.5 w-20 bg-blue-500"></div>
+        </div>
+        <div className="ml-16 space-y-3">
+          {category.nodes.map(node => {
+            if (typeof node === 'string') {
+              return renderNode(node);
+            } else if (node.nodes) {
+              return renderSubCategory(node);
+            }
+            return null;
+          })}
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -59,6 +222,17 @@ const RoadmapPage = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">로드맵</h2>
             <div className="flex space-x-3">
+              <select 
+                className="px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-violet-500 focus:border-violet-500"
+                value={selectedRole}
+                onChange={(e) => handleRoleChange(e.target.value)}
+              >
+                <option value="프론트엔드 개발자">프론트엔드 개발자</option>
+                {/* <option value="백엔드 개발자">백엔드 개발자</option>
+                <option value="데이터 분석가">데이터 분석가</option>
+                <option value="UX/UI 디자이너">UX/UI 디자이너</option>
+                <option value="프로젝트 매니저">프로젝트 매니저</option> */}
+              </select>
               <Button variant="secondary">로드맵 저장</Button>
               <Button variant="secondary">로드맵 공유</Button>
             </div>
@@ -75,188 +249,17 @@ const RoadmapPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3">
               <Card className="p-0 overflow-hidden">
-                <div className="p-4 border-b">
-                  <h3 className="text-xl font-bold">프론트엔드 개발자 로드맵</h3>
+                <div className="p-4 border-b flex justify-between items-center">
+                  <h3 className="text-xl font-bold">{selectedRole} 로드맵</h3>
                 </div>
                 
                 <div className="roadmap-container relative overflow-auto bg-gray-50" style={{ height: '700px' }}>
-                  {/* 이 부분은 실제 SVG 또는 인터랙티브 다이어그램으로 대체됩니다 */}
-                  {/* 여기서는 간단한 예시만 제공합니다 */}
-                  
                   <div className="p-6">
-                    {/* 메인 카테고리: HTML */}
-                    <div className="mb-10">
-                      <div className="flex items-center mb-3">
-                        <div className="w-16 h-10 bg-yellow-300 rounded-md flex items-center justify-center font-bold">
-                          HTML
-                        </div>
-                        <div className="ml-3 h-0.5 w-20 bg-blue-500"></div>
+                    {getCurrentRoleCategories().map((category, categoryIndex) => (
+                      <div key={categoryIndex}>
+                        {renderCategory(category)}
                       </div>
-                      
-                      <div className="ml-16 space-y-3">
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onClick={() => handleNodeSelect(nodeDetails['html-basics'])}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('html-basics');
-                          }}
-                        >
-                          {completedNodes['html-basics'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>HTML 기초 배우기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('semantic-html');
-                          }}
-                        >
-                          {completedNodes['semantic-html'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>시맨틱 HTML 작성하기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('forms');
-                          }}
-                        >
-                          {completedNodes['forms'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>폼과 유효성 검사</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 메인 카테고리: CSS */}
-                    <div className="mb-10">
-                      <div className="flex items-center mb-3">
-                        <div className="w-16 h-10 bg-yellow-300 rounded-md flex items-center justify-center font-bold">
-                          CSS
-                        </div>
-                        <div className="ml-3 h-0.5 w-20 bg-blue-500"></div>
-                      </div>
-                      
-                      <div className="ml-16 space-y-3">
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onClick={() => handleNodeSelect(nodeDetails['css-basics'])}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('css-basics');
-                          }}
-                        >
-                          {completedNodes['css-basics'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>CSS 기초 배우기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('layouts');
-                          }}
-                        >
-                          {completedNodes['layouts'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>레이아웃 만들기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('responsive');
-                          }}
-                        >
-                          {completedNodes['responsive'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>반응형 디자인</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* 메인 카테고리: JavaScript */}
-                    <div className="mb-10">
-                      <div className="flex items-center mb-3">
-                        <div className="w-24 h-10 bg-yellow-300 rounded-md flex items-center justify-center font-bold">
-                          JavaScript
-                        </div>
-                        <div className="ml-3 h-0.5 w-20 bg-blue-500"></div>
-                      </div>
-                      
-                      <div className="ml-16 space-y-3">
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onClick={() => handleNodeSelect(nodeDetails['js-basics'])}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('js-basics');
-                          }}
-                        >
-                          {completedNodes['js-basics'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>JavaScript 기초 배우기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('dom');
-                          }}
-                        >
-                          {completedNodes['dom'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>DOM 조작하기</span>
-                        </div>
-                        
-                        <div 
-                          className="relative flex items-center bg-amber-100 rounded-md p-3 border-2 cursor-pointer hover:bg-amber-200 transition-colors"
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            handleNodeToggle('fetch');
-                          }}
-                        >
-                          {completedNodes['fetch'] && (
-                            <div className="absolute -left-4 -top-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                          )}
-                          <span>Fetch API & 비동기 처리</span>
-                        </div>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </Card>
@@ -289,10 +292,19 @@ const RoadmapPage = () => {
                   
                   <div className="flex justify-center mt-4">
                     <Button 
-                      onClick={() => handleNodeToggle(Object.keys(nodeDetails).find(key => nodeDetails[key] === selectedNode))}
+                      onClick={() => {
+                        // 선택된 노드의 ID 찾기
+                        const nodeId = Object.entries(getCurrentRoleNodes())
+                          .find(([id, node]) => node === selectedNode)?.[0];
+                        
+                        if (nodeId) {
+                          handleNodeToggle(nodeId);
+                        }
+                      }}
                       className="w-full"
                     >
-                      {completedNodes[Object.keys(nodeDetails).find(key => nodeDetails[key] === selectedNode)] 
+                      {Object.entries(getCurrentRoleNodes())
+                        .some(([id, node]) => node === selectedNode && completedNodes[id])
                         ? '미완료로 표시' 
                         : '완료로 표시'}
                     </Button>
@@ -311,58 +323,113 @@ const RoadmapPage = () => {
               
               <Card className="mt-4">
                 <h3 className="text-lg font-bold mb-3">진행 상황</h3>
-                <div className="mb-2 flex justify-between items-center">
-                  <span className="text-gray-600">HTML</span>
-                  <span className="text-sm font-medium">
-                    {Object.keys(completedNodes).filter(key => ['html-basics', 'semantic-html', 'forms'].includes(key)).length} / 3
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${(Object.keys(completedNodes).filter(key => ['html-basics', 'semantic-html', 'forms'].includes(key)).length / 3) * 100}%` }}
-                  ></div>
-                </div>
                 
-                <div className="mb-2 flex justify-between items-center">
-                  <span className="text-gray-600">CSS</span>
-                  <span className="text-sm font-medium">
-                    {Object.keys(completedNodes).filter(key => ['css-basics', 'layouts', 'responsive'].includes(key)).length} / 3
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${(Object.keys(completedNodes).filter(key => ['css-basics', 'layouts', 'responsive'].includes(key)).length / 3) * 100}%` }}
-                  ></div>
-                </div>
-                
-                <div className="mb-2 flex justify-between items-center">
-                  <span className="text-gray-600">JavaScript</span>
-                  <span className="text-sm font-medium">
-                    {Object.keys(completedNodes).filter(key => ['js-basics', 'dom', 'fetch'].includes(key)).length} / 3
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
-                  <div
-                    className="bg-blue-600 h-2.5 rounded-full"
-                    style={{ width: `${(Object.keys(completedNodes).filter(key => ['js-basics', 'dom', 'fetch'].includes(key)).length / 3) * 100}%` }}
-                  ></div>
-                </div>
+                {/* 카테고리별 진행 상황 */}
+                {getCurrentRoleCategories().map((category, index) => (
+                  <div key={index} className="mb-4">
+                    <div className="mb-2 flex justify-between items-center">
+                      <span className="text-gray-600">{category.name}</span>
+                      <span className="text-sm font-medium">
+                        {(() => {
+                          // 모든 노드 ID를 재귀적으로 수집하는 함수
+                          const getAllNodeIds = (cat) => {
+                            if (!cat || !cat.nodes) return [];
+                            
+                            return cat.nodes.flatMap(node => {
+                              if (typeof node === 'string') {
+                                return [node];
+                              }
+                              if (node.nodes) {
+                                return getAllNodeIds(node);
+                              }
+                              return [];
+                            });
+                          };
+                          
+                          const nodeIds = getAllNodeIds(category);
+                          const completedCount = nodeIds.filter(id => completedNodes[id]).length;
+                          return `${completedCount} / ${nodeIds.length}`;
+                        })()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{ width: `${calculateCategoryProgress(category)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
                 
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">전체 진행률</span>
                     <span className="text-sm font-medium">
-                      {Object.keys(completedNodes).length} / 9
+                      {(() => {
+                        // 모든 노드 ID를 재귀적으로 수집하는 함수
+                        const getAllNodeIds = (categories) => {
+                          return categories.flatMap(category => {
+                            if (!category || !category.nodes) return [];
+                            
+                            return category.nodes.flatMap(node => {
+                              if (typeof node === 'string') {
+                                return [node];
+                              }
+                              if (node.nodes) {
+                                return getAllNodeIds([node]);
+                              }
+                              return [];
+                            });
+                          });
+                        };
+                        
+                        const categories = getCurrentRoleCategories();
+                        const allNodeIds = getAllNodeIds(categories);
+                        const completedCount = allNodeIds.filter(id => completedNodes[id]).length;
+                        return `${completedCount} / ${allNodeIds.length}`;
+                      })()}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                     <div
                       className="bg-green-600 h-2.5 rounded-full"
-                      style={{ width: `${(Object.keys(completedNodes).length / 9) * 100}%` }}
+                      style={{ width: `${calculateTotalProgress()}%` }}
                     ></div>
                   </div>
+                </div>
+                
+                {/* 역량 정보가 있을 경우 표시 */}
+                {selectedRole && Object.keys(skillLevels).length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <h4 className="font-medium mb-2">내 역량 수준</h4>
+                    {Object.entries(skillLevels).map(([skill, level]) => (
+                      <div key={skill} className="flex justify-between items-center mb-2">
+                        <span className="text-sm">{skill}</span>
+                        <div className="flex items-center">
+                          {[1, 2, 3].map(i => (
+                            <div 
+                              key={i}
+                              className={`w-2 h-2 rounded-full mx-0.5 ${
+                                i <= level ? 'bg-blue-500' : 'bg-gray-300'
+                              }`}
+                            ></div>
+                          ))}
+                          <span className="text-xs ml-1">
+                            {level === 1 ? '초급' : level === 2 ? '중급' : level === 3 ? '고급' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="mt-4 pt-4 border-t">
+                  <Button 
+                    className="w-full"
+                    onClick={() => navigate('/interview')}
+                  >
+                    기술 면접 시작하기
+                  </Button>
                 </div>
               </Card>
             </div>

@@ -242,7 +242,7 @@ const PartyProcess = () => {
       
       localStorage.setItem('userAssessmentData', JSON.stringify(userData));
       
-      // 인터뷰 페이지로 이동
+      // 기술 면접 페이지로 이동
       navigate('/interview');
     }
   };

@@ -20,6 +20,8 @@ const App = () => {
         <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/party-process" element={<PartyProcess />} />
         <Route path="/interview" element={<InterviewPage />} />
+        <Route path="/roadmap" element={<RoadmapManagement />} />
+        <Route path="/roadmap/:role" element={<RoadmapManagement />} />
         <Route path="/roadmap-generation" element={<RoadmapGeneration />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/roadmap-management" element={<RoadmapManagement />} />
